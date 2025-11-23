@@ -47,10 +47,10 @@ def ensure_data_files():
 
     extractor = GithubExtractor(token, repo, output_dir=DATA_DIR)
 
-    issues = extractor.fetch_issues(state="all")
+    issues = extractor.fetch_issues()
     extractor.save_json(issues, ISSUES_FILE)
 
-    pull_requests = extractor.fetch_pull_requests(state="all")
+    pull_requests = extractor.fetch_pull_requests()
     extractor.save_json(pull_requests, PRS_FILE)
 
     interactions = extractor.build_interactions(issues, pull_requests)
