@@ -1,5 +1,5 @@
 from typing import Optional, List
-from abstract_graph import AbstractGraph
+from grafh_blibiotecas.abstract_graph import AbstractGraph
 
 
 class AdjacencyMatrixGraph(AbstractGraph):

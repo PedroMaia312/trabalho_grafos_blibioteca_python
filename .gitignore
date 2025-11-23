@@ -1,5 +1,6 @@
 data/
-graphs_export
+graphs_export/
+analysis/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

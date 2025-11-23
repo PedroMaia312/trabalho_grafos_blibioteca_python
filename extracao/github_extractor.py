@@ -68,7 +68,7 @@ class GithubExtractor:
             issues_data.append(issue_dict)
             cont += 1
             print(cont)
-            print(f'Usuario: {issue_dict['user']} Titulo: {issue_dict['title']}')
+            print(f"Usuario: {issue_dict['user']} Titulo: {issue_dict['title']}")
 
         print(f"Total de issues coletadas: {len(issues_data)}")
         return issues_data
@@ -133,7 +133,7 @@ class GithubExtractor:
 
             cont += 1
             print(cont)
-            print(f'Usuario: {pr_dict['user']} Titulo: {pr_dict['title']}')
+            print(f"Usuario: {pr_dict['user']} Titulo: {pr_dict['title']}")
 
         print(f"Total de pull requests coletados: {len(prs_data)}")
         return prs_data
