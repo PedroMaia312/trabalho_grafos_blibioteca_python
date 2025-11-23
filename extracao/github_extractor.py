@@ -1,6 +1,7 @@
 from github import Github, Repository
 from typing import Any
 import os
+import json
 
 
 class GithubExtractor:
@@ -14,14 +15,25 @@ class GithubExtractor:
         except Exception as e:
             raise Exception(f"Erro ao conectar ao GitHub ou carregar o repositório: {e}")
 
+
     def _username(self, user) -> str:
         return getattr(user, "login", None)
+
 
     def _formatar_data(self, dt) -> str:
         try:
             return dt.isoformat()
         except Exception:
             return str(dt)
+        
+
+    def save_json(self, data: Any, filename: str) -> str:
+        path = os.path.join(self.output_dir, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f"Arquivo salvo em: {path}")
+        return path
+
 
     def fetch_issues(self) -> list[dict[str, Any]]:
         issues_data = []
@@ -60,6 +72,7 @@ class GithubExtractor:
 
         print(f"Total de issues coletadas: {len(issues_data)}")
         return issues_data
+
 
     def fetch_pull_requests(self) -> list[dict[str, Any]]:
         prs_data = []
@@ -125,7 +138,8 @@ class GithubExtractor:
         print(f"Total de pull requests coletados: {len(prs_data)}")
         return prs_data
 
-    def build_interacoes(
+
+    def build_interactions(
         self,
         issues: list[dict[str, Any]],
         pull_requests: list[dict[str, Any]]
@@ -235,3 +249,4 @@ class GithubExtractor:
                     )
 
         return {"events": events}
+    
