@@ -8,251 +8,328 @@ from main import ensure_data_files, load_jsons, collect_users, build_integrated_
 
 
 def compute_degrees(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    in_deg = {v: graph.getVertexInDegree(v) for v in range(n)}
-    out_deg = {v: graph.getVertexOutDegree(v) for v in range(n)}
-    total = {v: in_deg[v] + out_deg[v] for v in range(n)}
-    return in_deg, out_deg, total
+    numero_vertices = graph.getVertexCount()
+    graus_entrada = {vertice: graph.getVertexInDegree(vertice) for vertice in range(numero_vertices)}
+    graus_saida = {vertice: graph.getVertexOutDegree(vertice) for vertice in range(numero_vertices)}
+    graus_total = {vertice: graus_entrada[vertice] + graus_saida[vertice] for vertice in range(numero_vertices)}
+    return graus_entrada, graus_saida, graus_total
 
 
-def bfs_distances_directed(graph: AdjacencyListGraph, start: int):
-    dist = {start: 0}
-    q = deque([start])
-    while q:
-        u = q.popleft()
-        for v in graph._adjacency[u].keys():
-            if v not in dist:
-                dist[v] = dist[u] + 1
-                q.append(v)
-    return dist
+def bfs_distances_directed(graph: AdjacencyListGraph, vertice_inicial: int):
+    distancias = {vertice_inicial: 0}
+    fila = deque([vertice_inicial])
+    while fila:
+        vertice_atual = fila.popleft()
+        for vizinho in graph._adjacency[vertice_atual].keys():
+            if vizinho not in distancias:
+                distancias[vizinho] = distancias[vertice_atual] + 1
+                fila.append(vizinho)
+                
+    return distancias
 
 
 def closeness_centrality(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    closeness = {}
-    for u in range(n):
-        dist = bfs_distances_directed(graph, u)
-        if len(dist) <= 1:
-            closeness[u] = 0.0
-            continue
-        s = sum(dist.values())
-        closeness[u] = (len(dist) - 1) / s
-    return closeness
+    numero_vertices = graph.getVertexCount()
+    centralidade = {}
+    
+    for vertice_atual in range(numero_vertices):
+        distancias = bfs_distances_directed(graph, vertice_atual) 
+        if len(distancias) <= 1:
+            centralidade[vertice_atual] = 0.0
+            continue 
+        soma_distancias = sum(distancias.values())
+        centralidade[vertice_atual] = (len(distancias) - 1) / soma_distancias
+        
+    return centralidade
 
 
 def betweenness_centrality(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    bet = {v: 0.0 for v in range(n)}
-    for s in range(n):
-        stack = []
-        preds = {w: [] for w in range(n)}
-        sigma = {w: 0.0 for w in range(n)}
-        sigma[s] = 1.0
-        dist = {w: -1 for w in range(n)}
-        dist[s] = 0
-        q = deque([s])
-        while q:
-            v = q.popleft()
-            stack.append(v)
-            for w in graph._adjacency[v].keys():
-                if dist[w] < 0:
-                    q.append(w)
-                    dist[w] = dist[v] + 1
-                if dist[w] == dist[v] + 1:
-                    sigma[w] += sigma[v]
-                    preds[w].append(v)
-        delta = {w: 0.0 for w in range(n)}
-        while stack:
-            w = stack.pop()
-            for v in preds[w]:
-                if sigma[w] != 0:
-                    delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w])
-            if w != s:
-                bet[w] += delta[w]
-    if n > 2:
-        scale = 1.0 / ((n - 1) * (n - 2))
-        for v in bet:
-            bet[v] *= scale
-    return bet
+    numero_vertices = graph.getVertexCount()
+    centralidade = {i: 0.0 for i in range(numero_vertices)}
+    
+    for origem in range(numero_vertices):
+        pilha = []
+        predecessores = {i: [] for i in range(numero_vertices)}
+        
+        contagem_caminhos = {i: 0.0 for i in range(numero_vertices)}
+        contagem_caminhos[origem] = 1.0
+        
+        distancias = {i: -1 for i in range(numero_vertices)}
+        distancias[origem] = 0
+        
+        fila = deque([origem])
+        
+        while fila:
+            vertice_atual = fila.popleft()
+            pilha.append(vertice_atual)
+            
+            for vizinho in graph._adjacency[vertice_atual].keys():
+                if distancias[vizinho] < 0:
+                    fila.append(vizinho)
+                    distancias[vizinho] = distancias[vertice_atual] + 1
+                
+                if distancias[vizinho] == distancias[vertice_atual] + 1:
+                    contagem_caminhos[vizinho] += contagem_caminhos[vertice_atual]
+                    predecessores[vizinho].append(vertice_atual)
+        
+        dependencia = {i: 0.0 for i in range(numero_vertices)}
+        
+        while pilha:
+            vertice_pilha = pilha.pop()
+            
+            for predecessor in predecessores[vertice_pilha]:
+                if contagem_caminhos[vertice_pilha] != 0:
+                    peso = (contagem_caminhos[predecessor] / contagem_caminhos[vertice_pilha])
+                    dependencia[predecessor] += peso * (1 + dependencia[vertice_pilha])
+            
+            if vertice_pilha != origem:
+                centralidade[vertice_pilha] += dependencia[vertice_pilha]
+                
+    if numero_vertices > 2:
+        escala = 1.0 / ((numero_vertices - 1) * (numero_vertices - 2))
+        for v in centralidade:
+            centralidade[v] *= escala
+            
+    return centralidade
 
 
 def pagerank(graph: AdjacencyListGraph, alpha=0.85, max_iter=100, tol=1.0e-6):
-    n = graph.getVertexCount()
-    if n == 0:
+    numero_vertices = graph.getVertexCount()
+    
+    if numero_vertices == 0:
         return {}
-    pr = {v: 1.0 / n for v in range(n)}
-    out_deg = {v: graph.getVertexOutDegree(v) for v in range(n)}
+        
+    pagerank_atual = {i: 1.0 / numero_vertices for i in range(numero_vertices)}
+    
+    graus_saida = {i: graph.getVertexOutDegree(i) for i in range(numero_vertices)}
+    
     for _ in range(max_iter):
-        new_pr = {v: (1 - alpha) / n for v in range(n)}
-        for u in range(n):
-            if out_deg[u] == 0:
+        valor_base = (1 - alpha) / numero_vertices
+        novo_pagerank = {i: valor_base for i in range(numero_vertices)}
+        
+        for vertice_origem in range(numero_vertices):
+            if graus_saida[vertice_origem] == 0:
                 continue
-            share = pr[u] / out_deg[u]
-            for v in graph._adjacency[u].keys():
-                new_pr[v] += alpha * share
-        diff = sum(abs(new_pr[v] - pr[v]) for v in range(n))
-        pr = new_pr
-        if diff < tol:
+            
+            valor_compartilhado = pagerank_atual[vertice_origem] / graus_saida[vertice_origem]
+            
+            for vizinho in graph._adjacency[vertice_origem].keys():
+                novo_pagerank[vizinho] += alpha * valor_compartilhado
+                
+        diferenca_total = sum(abs(novo_pagerank[i] - pagerank_atual[i]) for i in range(numero_vertices))
+        
+        pagerank_atual = novo_pagerank
+        
+        if diferenca_total < tol:
             break
-    return pr
+            
+    return pagerank_atual
 
 
 def undirected_neighbors(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    neigh = [set() for _ in range(n)]
-    for u in range(n):
-        for v in graph._adjacency[u].keys():
-            neigh[u].add(v)
-            neigh[v].add(u)
-    return neigh
+    numero_vertices = graph.getVertexCount()
+    
+    vizinhos_nao_direcionados = [set() for _ in range(numero_vertices)]
+    
+    for vertice_origem in range(numero_vertices):
+        for vertice_destino in graph._adjacency[vertice_origem].keys():
+            vizinhos_nao_direcionados[vertice_origem].add(vertice_destino)
+            vizinhos_nao_direcionados[vertice_destino].add(vertice_origem)
+            
+    return vizinhos_nao_direcionados
 
 
 def clustering_coefficients(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    neigh = undirected_neighbors(graph)
-    coeff = {}
-    for u in range(n):
-        k = len(neigh[u])
-        if k < 2:
-            coeff[u] = 0.0
+    numero_vertices = graph.getVertexCount()
+    
+    vizinhos_por_vertice = undirected_neighbors(graph)
+    
+    coeficientes = {}
+    
+    for vertice_atual in range(numero_vertices):
+        quantidade_vizinhos = len(vizinhos_por_vertice[vertice_atual])
+        
+        if quantidade_vizinhos < 2:
+            coeficientes[vertice_atual] = 0.0
             continue
-        neighbors_list = list(neigh[u])
-        links = 0
-        for i in range(k):
-            v = neighbors_list[i]
-            for j in range(i + 1, k):
-                w = neighbors_list[j]
-                if w in neigh[v]:
-                    links += 1
-        coeff[u] = 2 * links / (k * (k - 1))
-    return coeff
+            
+        lista_de_vizinhos = list(vizinhos_por_vertice[vertice_atual])
+        conexoes_entre_vizinhos = 0
+        
+        for i in range(quantidade_vizinhos):
+            vizinho_um = lista_de_vizinhos[i]
+            
+            for j in range(i + 1, quantidade_vizinhos):
+                vizinho_dois = lista_de_vizinhos[j]
+                
+                if vizinho_dois in vizinhos_por_vertice[vizinho_um]:
+                    conexoes_entre_vizinhos += 1
+                    
+        coeficientes[vertice_atual] = 2 * conexoes_entre_vizinhos / (quantidade_vizinhos * (quantidade_vizinhos - 1))
+        
+    return coeficientes
 
 
 def density(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    m = graph.getEdgeCount()
-    if n < 2:
-        return 0.0
-    return m / (n * (n - 1))
+    numero_vertices = graph.getVertexCount()
+    numero_arestas = graph.getEdgeCount()
+    
+    if numero_vertices < 2:
+        return 0.0     
+    return numero_arestas / (numero_vertices * (numero_vertices - 1))
 
 
 def assortativity_degree(graph: AdjacencyListGraph):
-    neigh = undirected_neighbors(graph)
-    n = graph.getVertexCount()
-    degrees = {v: graph.getVertexInDegree(v) + graph.getVertexOutDegree(v) for v in range(n)}
-    xs = []
-    ys = []
-    seen = set()
-    for u in range(n):
-        for v in neigh[u]:
-            if (v, u) in seen:
+    vizinhos = undirected_neighbors(graph)
+    numero_vertices = graph.getVertexCount()
+    
+    graus_totais = {v: graph.getVertexInDegree(v) + graph.getVertexOutDegree(v) for v in range(numero_vertices)}
+    
+    lista_graus_x = []
+    lista_graus_y = []
+    arestas_visitadas = set()
+    
+    for vertice_u in range(numero_vertices):
+        for vertice_v in vizinhos[vertice_u]:
+            if (vertice_v, vertice_u) in arestas_visitadas:
                 continue
-            seen.add((u, v))
-            xs.append(degrees[u])
-            ys.append(degrees[v])
-    if len(xs) < 2:
+                
+            arestas_visitadas.add((vertice_u, vertice_v))
+            
+            lista_graus_x.append(graus_totais[vertice_u])
+            lista_graus_y.append(graus_totais[vertice_v])
+            
+    if len(lista_graus_x) < 2:
         return 0.0
-    mean_x = sum(xs) / len(xs)
-    mean_y = sum(ys) / len(ys)
-    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / len(xs)
-    var_x = sum((x - mean_x) ** 2 for x in xs) / len(xs)
-    var_y = sum((y - mean_y) ** 2 for y in ys) / len(ys)
-    if var_x == 0 or var_y == 0:
+        
+    media_x = sum(lista_graus_x) / len(lista_graus_x)
+    media_y = sum(lista_graus_y) / len(lista_graus_y)
+    
+    soma_covariancia = sum((x - media_x) * (y - media_y) for x, y in zip(lista_graus_x, lista_graus_y))
+    covariancia = soma_covariancia / len(lista_graus_x)
+    
+    soma_diff_x = sum((x - media_x) ** 2 for x in lista_graus_x)
+    variancia_x = soma_diff_x / len(lista_graus_x)
+    
+    soma_diff_y = sum((y - media_y) ** 2 for y in lista_graus_y)
+    variancia_y = soma_diff_y / len(lista_graus_y)
+    
+    if variancia_x == 0 or variancia_y == 0:
         return 0.0
-    return cov / math.sqrt(var_x * var_y)
+        
+    return covariancia / math.sqrt(variancia_x * variancia_y)
 
 
 def communities_connected_components(graph: AdjacencyListGraph):
-    n = graph.getVertexCount()
-    neigh = undirected_neighbors(graph)
-    visited = [False] * n
-    communities = []
-    for v in range(n):
-        if not visited[v]:
-            comp = []
-            stack = [v]
-            visited[v] = True
-            while stack:
-                u = stack.pop()
-                comp.append(u)
-                for w in neigh[u]:
-                    if not visited[w]:
-                        visited[w] = True
-                        stack.append(w)
-            communities.append(comp)
-    return communities
+    numero_vertices = graph.getVertexCount()
+    vizinhos_por_vertice = undirected_neighbors(graph)
+    
+    visitados = [False] * numero_vertices
+    comunidades = []
+    
+    for vertice_atual in range(numero_vertices):
+        if not visitados[vertice_atual]:
+            componente_atual = []
+            pilha = [vertice_atual]
+            visitados[vertice_atual] = True
+            
+            while pilha:
+                vertice_visitado = pilha.pop()
+                componente_atual.append(vertice_visitado)
+                
+                for vizinho in vizinhos_por_vertice[vertice_visitado]:
+                    if not visitados[vizinho]:
+                        visitados[vizinho] = True
+                        pilha.append(vizinho)
+                        
+            comunidades.append(componente_atual)
+            
+    return comunidades
 
 
-def top_n_pretty(title, metric, users, n=10):
-    print(f"\n===== {title} (Top {n}) =====")
+def top_n_pretty(titulo, metrica, usuarios, quantidade=10):
+    print(f"\n===== {titulo} (Top {quantidade}) =====")
     print(f"{'Rank':<5} {'Usuário':<30} {'ID':<6} {'Valor':<12}")
     print("-" * 60)
-    items = sorted(metric.items(), key=lambda x: x[1], reverse=True)[:n]
-    for rank, (vertex, value) in enumerate(items, start=1):
-        username = users[vertex]
-        print(f"{rank:<5} {username:<30} {vertex:<6} {value:<12.6f}")
+    itens_ordenados = sorted(metrica.items(), key=lambda item: item[1], reverse=True)[:quantidade]
+    for posicao, (id_vertice, valor) in enumerate(itens_ordenados, start=1):
+        nome_usuario = usuarios[id_vertice]
+        print(f"{posicao:<5} {nome_usuario:<30} {id_vertice:<6} {valor:<12.6f}")
 
 
-def export_top_n_csv(path, metric, users, n=10):
-    items = sorted(metric.items(), key=lambda x: x[1], reverse=True)[:n]
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f, delimiter=";")
-        writer.writerow(["rank", "vertex_id", "username", "value"])
-        for rank, (vertex, value) in enumerate(items, start=1):
-            writer.writerow([rank, vertex, users[vertex], value])
+def export_top_n_csv(caminho_arquivo, dados_metrica, lista_usuarios, quantidade=10):
+    itens_ordenados = sorted(dados_metrica.items(), key=lambda item: item[1], reverse=True)[:quantidade]
+    
+    with open(caminho_arquivo, "w", newline="", encoding="utf-8") as arquivo_saida:
+        escritor_csv = csv.writer(arquivo_saida, delimiter=";")
+        
+        escritor_csv.writerow(["rank", "vertex_id", "username", "value"])
+        
+        for posicao, (id_vertice, valor) in enumerate(itens_ordenados, start=1):
+            escritor_csv.writerow([posicao, id_vertice, lista_usuarios[id_vertice], valor])
 
 
 def run_analysis():
-    paths = ensure_data_files()
-    issues, pull_requests, events = load_jsons(paths)
-    users, index_by_user = collect_users(issues, pull_requests, events)
-    num_vertices = len(users)
-    integrated = build_integrated_graph(events, index_by_user, num_vertices)
+    caminhos_arquivos = ensure_data_files()
+    dados_issues, dados_prs, dados_eventos = load_jsons(caminhos_arquivos)
+    
+    lista_usuarios, mapa_usuario_indice = collect_users(dados_issues, dados_prs, dados_eventos)
+    numero_total_vertices = len(lista_usuarios)
+    
+    grafo_integrado = build_integrated_graph(dados_eventos, mapa_usuario_indice, numero_total_vertices)
 
-    in_deg, out_deg, total_deg = compute_degrees(integrated)
-    close = closeness_centrality(integrated)
-    bet = betweenness_centrality(integrated)
-    pr = pagerank(integrated)
-    clust = clustering_coefficients(integrated)
-    dens = density(integrated)
-    assort = assortativity_degree(integrated)
-    comms = communities_connected_components(integrated)
+    graus_entrada, graus_saida, graus_total = compute_degrees(grafo_integrado)
+    centralidade_closeness = closeness_centrality(grafo_integrado)
+    centralidade_betweenness = betweenness_centrality(grafo_integrado)
+    resultado_pagerank = pagerank(grafo_integrado)
+    coeficientes_agrupamento = clustering_coefficients(grafo_integrado)
+    densidade_rede = density(grafo_integrado)
+    assortatividade = assortativity_degree(grafo_integrado)
+    comunidades_detectadas = communities_connected_components(grafo_integrado)
 
-    avg_clust = sum(clust.values()) / num_vertices if num_vertices > 0 else 0.0
+    agrupamento_medio = sum(coeficientes_agrupamento.values()) / numero_total_vertices if numero_total_vertices > 0 else 0.0
 
-    print("Vértices:", integrated.getVertexCount())
-    print("Arestas:", integrated.getEdgeCount())
-    print("Densidade da rede:", dens)
-    print("Assortatividade (grau):", assort)
-    print("Número de comunidades (componentes):", len(comms))
-    print("Clustering médio:", avg_clust)
+    print("Vértices:", grafo_integrado.getVertexCount())
+    print("Arestas:", grafo_integrado.getEdgeCount())
+    print("Densidade da rede:", densidade_rede)
+    print("Assortatividade (grau):", assortatividade)
+    print("Número de comunidades (componentes):", len(comunidades_detectadas))
+    print("Clustering médio:", agrupamento_medio)
 
-    top_n_pretty("Grau total", total_deg, users)
-    top_n_pretty("Betweenness", bet, users)
-    top_n_pretty("Closeness", close, users)
-    top_n_pretty("PageRank", pr, users)
-    top_n_pretty("Clustering Coefficient", clust, users)
+    top_n_pretty("Grau total", graus_total, lista_usuarios)
+    top_n_pretty("Betweenness", centralidade_betweenness, lista_usuarios)
+    top_n_pretty("Closeness", centralidade_closeness, lista_usuarios)
+    top_n_pretty("PageRank", resultado_pagerank, lista_usuarios)
+    top_n_pretty("Clustering Coefficient", coeficientes_agrupamento, lista_usuarios)
 
-    analysis_dir = os.path.join(os.getcwd(), "analysis")
-    if not os.path.isdir(analysis_dir):
-        os.makedirs(analysis_dir, exist_ok=True)
+    diretorio_analise = os.path.join(os.getcwd(), "analysis")
+    if not os.path.isdir(diretorio_analise):
+        os.makedirs(diretorio_analise, exist_ok=True)
 
-    export_top_n_csv(os.path.join(analysis_dir, "top10_degree.csv"), total_deg, users)
-    export_top_n_csv(os.path.join(analysis_dir, "top10_betweenness.csv"), bet, users)
-    export_top_n_csv(os.path.join(analysis_dir, "top10_closeness.csv"), close, users)
-    export_top_n_csv(os.path.join(analysis_dir, "top10_pagerank.csv"), pr, users)
-    export_top_n_csv(os.path.join(analysis_dir, "top10_clustering.csv"), clust, users)
+    export_top_n_csv(os.path.join(diretorio_analise, "top10_degree.csv"), graus_total, lista_usuarios)
+    export_top_n_csv(os.path.join(diretorio_analise, "top10_betweenness.csv"), centralidade_betweenness, lista_usuarios)
+    export_top_n_csv(os.path.join(diretorio_analise, "top10_closeness.csv"), centralidade_closeness, lista_usuarios)
+    export_top_n_csv(os.path.join(diretorio_analise, "top10_pagerank.csv"), resultado_pagerank, lista_usuarios)
+    export_top_n_csv(os.path.join(diretorio_analise, "top10_clustering.csv"), coeficientes_agrupamento, lista_usuarios)
 
-    summary_path = os.path.join(analysis_dir, "centrality_summary.csv")
-    with open(summary_path, "w", encoding="utf-8") as f:
-        f.write("vertex;user;in_degree;out_degree;degree;closeness;betweenness;pagerank;clustering\n")
-        for v in range(num_vertices):
-            user = users[v]
-            f.write(
-                f"{v};{user};{in_deg[v]};{out_deg[v]};{total_deg[v]};"
-                f"{close.get(v, 0.0)};{bet.get(v, 0.0)};{pr.get(v, 0.0)};{clust.get(v, 0.0)}\n"
+    caminho_resumo = os.path.join(diretorio_analise, "centrality_summary.csv")
+    with open(caminho_resumo, "w", encoding="utf-8") as arquivo_resumo:
+        arquivo_resumo.write("vertex;user;in_degree;out_degree;degree;closeness;betweenness;pagerank;clustering\n")
+        
+        for id_vertice in range(numero_total_vertices):
+            nome_usuario = lista_usuarios[id_vertice]
+            
+            linha = (
+                f"{id_vertice};{nome_usuario};"
+                f"{graus_entrada[id_vertice]};{graus_saida[id_vertice]};{graus_total[id_vertice]};"
+                f"{centralidade_closeness.get(id_vertice, 0.0)};"
+                f"{centralidade_betweenness.get(id_vertice, 0.0)};"
+                f"{resultado_pagerank.get(id_vertice, 0.0)};"
+                f"{coeficientes_agrupamento.get(id_vertice, 0.0)}\n"
             )
-    print("\nResumo de centralidades salvo em:", summary_path)
+            arquivo_resumo.write(linha)
+            
+    print("\nResumo de centralidades salvo em:", caminho_resumo)
 
 
 if __name__ == "__main__":
