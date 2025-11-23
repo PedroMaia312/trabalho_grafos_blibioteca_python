@@ -3,7 +3,6 @@ from typing import Any
 import os
 import json
 
-
 class GithubExtractor:
     def __init__(self, github_token: str, repositorio: str, output_dir: str = "data"):
         try:

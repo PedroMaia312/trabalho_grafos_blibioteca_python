@@ -2,6 +2,9 @@ import os
 import json
 from extracao.github_extractor import GithubExtractor
 from grafh_blibiotecas.adjacency_list_graph import AdjacencyListGraph
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DATA_DIR = os.path.join(os.getcwd(), 'data')
 ISSUES_FILE = "issues.json"
@@ -35,8 +38,8 @@ def ensure_data_files():
         print("Arquivos JSON já existem, pulando etapa de extração.")
         return paths
 
-    token = os.environ.get("TOKEN_GITHUB")
-    repo = os.environ.get("GITHUB_REPO")
+    token = os.getenv("TOKEN_GITHUB")
+    repo = os.getenv("GITHUB_REPO")
 
     if not token or not repo:
         raise RuntimeError(
