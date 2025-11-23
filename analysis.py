@@ -218,16 +218,20 @@ def run_analysis():
     assort = assortativity_degree(integrated)
     comms = communities_connected_components(integrated)
 
+    avg_clust = sum(clust.values()) / num_vertices if num_vertices > 0 else 0.0
+
     print("Vértices:", integrated.getVertexCount())
     print("Arestas:", integrated.getEdgeCount())
     print("Densidade da rede:", dens)
     print("Assortatividade (grau):", assort)
     print("Número de comunidades (componentes):", len(comms))
+    print("Clustering médio:", avg_clust)
 
     top_n_pretty("Grau total", total_deg, users)
     top_n_pretty("Betweenness", bet, users)
     top_n_pretty("Closeness", close, users)
     top_n_pretty("PageRank", pr, users)
+    top_n_pretty("Clustering Coefficient", clust, users)
 
     analysis_dir = os.path.join(os.getcwd(), "analysis")
     if not os.path.isdir(analysis_dir):
@@ -237,6 +241,7 @@ def run_analysis():
     export_top_n_csv(os.path.join(analysis_dir, "top10_betweenness.csv"), bet, users)
     export_top_n_csv(os.path.join(analysis_dir, "top10_closeness.csv"), close, users)
     export_top_n_csv(os.path.join(analysis_dir, "top10_pagerank.csv"), pr, users)
+    export_top_n_csv(os.path.join(analysis_dir, "top10_clustering.csv"), clust, users)
 
     summary_path = os.path.join(analysis_dir, "centrality_summary.csv")
     with open(summary_path, "w", encoding="utf-8") as f:
